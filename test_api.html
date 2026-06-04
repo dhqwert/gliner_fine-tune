@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLiNER NER Tester & Annotator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+
+            --tag-skill: rgba(16, 185, 129, 0.2);
+            --tag-skill-border: #10b981;
+            --tag-major: rgba(139, 92, 246, 0.2);
+            --tag-major-border: #8b5cf6;
+            --tag-experience: rgba(245, 158, 11, 0.2);
+            --tag-experience-border: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 2rem;
+        }
+
+        header { text-align: center; margin-bottom: 2rem; }
+
+        h1 {
+            font-weight: 700; font-size: 2.5rem;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle { color: var(--text-muted); font-size: 1.1rem; }
+
+        .container { display: flex; flex: 1; max-width: 1800px; margin: 0 auto; width: 100%; }
+
+        .resizer {
+            width: 2rem;
+            cursor: col-resize;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.2s;
+            border-radius: 8px;
+            user-select: none;
+        }
+        .resizer:hover, .resizer.resizing {
+            background: rgba(59, 130, 246, 0.1);
+        }
+        .resizer::after {
+            content: '';
+            width: 4px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            transition: background 0.2s;
+        }
+        .resizer:hover::after, .resizer.resizing::after {
+            background: var(--primary);
+        }
+
+        .panel {
+            flex: 1; background: var(--glass-bg); backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border);
+            border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--glass-border);
+        }
+
+        .panel-title { font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+
+        textarea {
+            flex: 1; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border);
+            border-radius: 8px; color: var(--text-main); padding: 1rem; font-size: 0.95rem;
+            line-height: 1.6; resize: none; outline: none; transition: border-color 0.3s ease;
+            overflow: hidden;
+        }
+        textarea:focus { border-color: var(--primary); }
+
+        .controls { margin-top: 1rem; display: flex; justify-content: flex-end; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+        .labels-input {
+            background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border);
+            border-radius: 6px; color: var(--text-main); padding: 0.5rem 1rem;
+            width: 300px; font-size: 0.9rem; outline: none;
+        }
+
+        button {
+            background-color: var(--primary); color: white; border: none; border-radius: 8px;
+            padding: 0.75rem 1.5rem; font-weight: 600; font-size: 1rem; cursor: pointer;
+            transition: all 0.2s ease; display: flex; align-items: center; gap: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+        }
+        button:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+        button:active { transform: translateY(1px); }
+        button:disabled { background-color: #475569; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        button.btn-success { background-color: var(--success); box-shadow: 0 4px 6px -1px rgba(16,185,129,0.3); }
+        button.btn-success:hover { background-color: #059669; }
+        button.btn-warning { background-color: var(--warning); box-shadow: 0 4px 6px -1px rgba(245,158,11,0.3); }
+        button.btn-warning:hover { background-color: #d97706; }
+        button.btn-danger { background-color: var(--danger); box-shadow: 0 4px 6px -1px rgba(239,68,68,0.3); }
+        button.btn-danger:hover { background-color: #dc2626; }
+
+        button.btn-icon {
+            padding: 0.4rem 0.6rem; background: rgba(255,255,255,0.1); box-shadow: none;
+        }
+        button.btn-icon:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Results */
+        .results-area {
+            flex: 1; background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px; padding: 1rem; border: 1px solid var(--glass-border);
+        }
+
+        .empty-state {
+            height: 100%; display: flex; align-items: center; justify-content: center;
+            color: var(--text-muted); text-align: center; font-style: italic;
+        }
+
+        .entity-card {
+            background: rgba(30, 41, 59, 0.8); border-radius: 8px; padding: 1rem;
+            margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;
+            border-left: 4px solid transparent; animation: slideIn 0.3s ease forwards; opacity: 0;
+            transform: translateX(10px);
+        }
+        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+
+        .entity-content { flex: 1; }
+        .entity-text { font-weight: 600; font-size: 1.05rem; margin-bottom: 0.25rem; }
+        .entity-meta { display: flex; align-items: center; gap: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+
+        .badge {
+            padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: opacity 0.2s;
+        }
+        .badge.skill    { background: var(--tag-skill);      color: var(--tag-skill-border);      border: 1px solid var(--tag-skill-border); }
+        .badge.major    { background: var(--tag-major);      color: var(--tag-major-border);      border: 1px solid var(--tag-major-border); }
+        .badge.experience { background: var(--tag-experience); color: var(--tag-experience-border); border: 1px solid var(--tag-experience-border); }
+        .badge.other    { background: rgba(148,163,184,0.2); color: #94a3b8; border: 1px solid #94a3b8; }
+
+        .confidence { display: flex; align-items: center; gap: 0.5rem; }
+        .confidence-bar { width: 50px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+        .confidence-fill { height: 100%; background: var(--primary); border-radius: 2px; }
+
+        /* Annotated text */
+        .annotated-text { line-height: 2.2; font-size: 1rem; white-space: pre-wrap; padding-bottom: 1.5rem; }
+
+        .mark {
+            display: inline; padding: 0.15rem 0.3rem; border-radius: 4px; margin: 0 0.05rem;
+            font-weight: 500; position: relative; cursor: default;
+            border-bottom: 2px solid transparent;
+        }
+        .mark.skill      { background: var(--tag-skill);      border-bottom-color: var(--tag-skill-border); }
+        .mark.major      { background: var(--tag-major);      border-bottom-color: var(--tag-major-border); }
+        .mark.experience { background: var(--tag-experience); border-bottom-color: var(--tag-experience-border); }
+
+        /* Annotation mode extras */
+        .mark.annotate-mode { cursor: default; transition: filter 0.15s; }
+        .mark.annotate-mode:hover { filter: brightness(1.2); }
+
+        .mark-label {
+            font-size: 0.6rem; text-transform: uppercase; vertical-align: super;
+            opacity: 0.8; margin-left: 2px; font-weight: 700;
+        }
+
+        .mark.is-manual {
+            color: #fbbf24;
+            border-bottom: 2px dashed #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+        }
+        .mark.is-manual .mark-label::after {
+            content: " (MANUAL)";
+            color: #fcd34d;
+        }
+
+        .delete-btn {
+            display: none; background: rgba(239,68,68,0.8); border: none; border-radius: 50%;
+            color: white; font-size: 0.65rem; width: 16px; height: 16px; cursor: pointer;
+            padding: 0; margin-left: 3px; align-items: center; justify-content: center;
+            vertical-align: middle; line-height: 1; transition: background 0.2s;
+        }
+        .mark.annotate-mode:hover .delete-btn,
+        .mark.annotate-mode .delete-btn { display: inline-flex; }
+        .delete-btn:hover { background: var(--danger); }
+
+        /* Change label dropdown in list view */
+        .label-select {
+            background: rgba(15,23,42,0.8); border: 1px solid var(--glass-border);
+            color: var(--text-main); border-radius: 6px; padding: 0.2rem 0.4rem;
+            font-size: 0.8rem; cursor: pointer; display: none;
+        }
+        .annotate-list-mode .label-select { display: inline-block; }
+        .annotate-list-mode .remove-entity-btn { display: inline-flex; }
+        .remove-entity-btn {
+            display: none; background: rgba(239,68,68,0.15); border: 1px solid var(--danger);
+            color: var(--danger); border-radius: 6px; padding: 0.25rem 0.6rem;
+            font-size: 0.8rem; cursor: pointer; margin-left: 0.5rem;
+        }
+        .remove-entity-btn:hover { background: rgba(239,68,68,0.3); }
+
+        /* Label picker popup */
+        #labelPicker {
+            display: none; position: fixed; background: rgba(15,23,42,0.97);
+            border: 1px solid var(--glass-border); border-radius: 10px; padding: 0.75rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1000; min-width: 200px;
+        }
+        #labelPicker .picker-title {
+            font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        #labelPicker .selected-text {
+            font-size: 0.85rem; color: var(--text-main); margin-bottom: 0.75rem;
+            padding: 0.4rem 0.6rem; background: rgba(255,255,255,0.05);
+            border-radius: 4px; font-style: italic;
+        }
+        .picker-btn {
+            width: 100%; padding: 0.5rem 0.75rem; border: none; border-radius: 6px;
+            cursor: pointer; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.4rem;
+            display: block; text-align: left; transition: opacity 0.2s;
+        }
+        .picker-btn:hover { opacity: 0.85; }
+        .picker-btn.skill      { background: var(--tag-skill);      color: var(--tag-skill-border); }
+        .picker-btn.major      { background: var(--tag-major);      color: var(--tag-major-border); }
+        .picker-btn.experience { background: var(--tag-experience); color: var(--tag-experience-border); }
+        .picker-cancel { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+
+        /* Feedback bar */
+        #feedbackBar {
+            display: none; margin-top: 1rem; padding: 1rem; background: rgba(16,185,129,0.1);
+            border: 1px solid rgba(16,185,129,0.3); border-radius: 10px;
+            align-items: center; gap: 1rem; flex-wrap: wrap;
+        }
+        .feedback-hint { font-size: 0.9rem; color: #6ee7b7; flex: 1; }
+        .feedback-stats { font-size: 0.85rem; color: var(--text-muted); }
+
+        /* Annotation mode banner */
+        #annotationBanner {
+            display: none; padding: 0.6rem 1rem; background: rgba(245,158,11,0.15);
+            border: 1px solid rgba(245,158,11,0.4); border-radius: 8px;
+            font-size: 0.85rem; color: #fcd34d; margin-bottom: 0.75rem; text-align: center;
+        }
+
+        /* Loader */
+        .loader {
+            display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%; border-top-color: white; animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .stats-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .stat-card {
+            background: rgba(15,23,42,0.5); border: 1px solid var(--glass-border);
+            padding: 0.75rem 1rem; border-radius: 8px; display: flex; align-items: center; gap: 0.75rem;
+        }
+        .stat-value { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .tabs { display: flex; gap: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; }
+        .tab { padding: 0.5rem 1rem; cursor: pointer; color: var(--text-muted); font-weight: 600; position: relative; transition: color 0.2s; }
+        .tab.active { color: var(--primary); }
+        .tab.active::after {
+            content: ''; position: absolute; bottom: -0.5rem; left: 0;
+            width: 100%; height: 2px; background: var(--primary); border-radius: 2px;
+        }
+        .view-pane { display: none; }
+        .view-pane.active { display: block; }
+
+        /* Toast */
+        #toast {
+            position: fixed; bottom: 2rem; right: 2rem; background: rgba(16,185,129,0.95);
+            color: white; padding: 1rem 1.5rem; border-radius: 10px; font-weight: 600;
+            transform: translateY(100px); opacity: 0; transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 9999;
+        }
+        #toast.show { transform: translateY(0); opacity: 1; }
+        #toast.error { background: rgba(239,68,68,0.95); }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>GLiNER NER API Tester & Annotator</h1>
+        <p class="subtitle">Extract → Review → Correct → Submit feedback → Re-train</p>
+    </header>
+
+    <div class="container" style="max-width: 1800px;">
+        <!-- LEFT: INPUT -->
+        <div class="panel" id="panel1" style="flex: 2 1 0%;">
+            <div class="panel-header" style="flex-wrap: wrap;">
+                <div class="panel-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    Input Text
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div id="jobPagination" style="display: none; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                        <button onclick="prevJob()" class="btn-icon" title="Previous Job">⬅️</button>
+                        <input type="number" id="jobIndexInput" min="1" value="1" onchange="jumpToJob(this.value)" style="width: 60px; padding: 0.2rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); color: var(--text-main); border-radius: 4px; text-align: center;">
+                        <span id="jobCountTotal">/ 0</span>
+                        <button onclick="nextJob()" class="btn-icon" title="Next Job">➡️</button>
+                    </div>
+                    <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleFileUpload(event)">
+                    <button onclick="document.getElementById('jsonFileInput').click()" style="padding:0.5rem 1rem; font-size:0.85rem;" class="btn-success">
+                        📂 Load JSON
+                    </button>
+                </div>
+            </div>
+            <div class="controls" style="margin-bottom: 1rem;">
+                <input type="text" id="labelsInput" class="labels-input" value="skill, major, experience" title="Comma separated labels">
+                <input type="number" id="thresholdInput" class="labels-input" style="width:120px" value="0.3" min="0" max="1" step="0.05" title="Confidence threshold">
+                <button id="extractBtn" onclick="extractEntities()">
+                    <span>Extract Entities</span>
+                    <div class="loader" id="btnLoader"></div>
+                    <svg id="btnIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+            </div>
+
+            <textarea id="inputText" placeholder="Paste job description here..." oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">[DESCRIPTION]:
+- Làm việc tại bộ phận Xuất nhập khẩu
+- Biên dịch các tài liệu công việc tại bộ phận xuất nhập khẩu
+- Phiên dịch giữa quản lý người Hàn Quốc và Việt Nam
+- Thực hiện và tổng hợp các báo cáo có liên quan đến bộ phận
+
+[REQUIREMENTS]:
+- Tốt nghiệp từ Cao đẳng trở lên các chuyên ngành liên quan
+- Tiếng Hàn tốt (Topik 5 trở lên)
+- Sử dụng tốt tin học văn phòng
+- Không yêu cầu kinh nghiệm</textarea>
+        </div>
+
+        <div class="resizer" id="resizer1"></div>
+
+        <!-- MIDDLE: OUTPUT -->
+        <div class="panel" id="panel2" style="flex: 2 1 0%;">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Extraction Results
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button id="annotateBtn" onclick="toggleAnnotationMode()" style="display:none; padding:0.5rem 1rem; font-size:0.85rem;" class="btn-warning">
+                        ✏️ Annotate
+                    </button>
+                    <button id="submitFeedbackBtn" onclick="submitFeedback()" style="display:none; padding:0.5rem 1rem; font-size:0.85rem;" class="btn-success">
+                        💾 Submit Corrections
+                    </button>
+                </div>
+            </div>
+
+            <div id="annotationBanner">
+                ✏️ <strong>Annotation Mode</strong> — Click <strong>×</strong> trên entity để xoá · Bôi đen text để thêm entity mới
+            </div>
+
+            <div class="stats-row" id="statsRow" style="display: none;">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalEntities">0</div>
+                    <div class="stat-label">Total Found</div>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--tag-skill-border); border-left-width: 4px;">
+                    <div class="stat-value" id="skillCount" style="color: var(--tag-skill-border)">0</div>
+                    <div class="stat-label">Skills</div>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--tag-major-border); border-left-width: 4px;">
+                    <div class="stat-value" id="majorCount" style="color: var(--tag-major-border)">0</div>
+                    <div class="stat-label">Majors</div>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--tag-experience-border); border-left-width: 4px;">
+                    <div class="stat-value" id="expCount" style="color: var(--tag-experience-border)">0</div>
+                    <div class="stat-label">Exp</div>
+                </div>
+            </div>
+
+            <div class="results-area" id="resultsArea">
+                <div class="empty-state" id="emptyState">
+                    <div>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        <p>Click "Extract Entities" to analyse the text.</p>
+                    </div>
+                </div>
+                <div id="annotatedView" class="view-pane active"></div>
+            </div>
+
+            <!-- Feedback bar -->
+            <div id="feedbackBar">
+                <span class="feedback-hint">🎯 Review entities above, then submit your corrections to improve the model.</span>
+                <span class="feedback-stats" id="feedbackChangeCount"></span>
+            </div>
+        </div>
+
+        <div class="resizer" id="resizer2"></div>
+
+        <!-- RIGHT: ENTITY LIST -->
+        <div class="panel" id="panel3" style="flex: 1.2 1 0%;">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    Entities List
+                </div>
+            </div>
+            <div id="listView" style="flex: 1;">
+                <div class="empty-state">No entities yet.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Label picker popup -->
+    <div id="labelPicker">
+        <div class="picker-title">Label as</div>
+        <div class="selected-text" id="pickerSelectedText"></div>
+        <button class="picker-btn skill" onclick="addEntityFromSelection('skill')">🟢 SKILL</button>
+        <button class="picker-btn major" onclick="addEntityFromSelection('major')">🟣 MAJOR</button>
+        <button class="picker-btn experience" onclick="addEntityFromSelection('experience')">🟡 EXPERIENCE</button>
+        <button class="picker-btn picker-cancel" onclick="hideLabelPicker()">Cancel</button>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast"></div>
+
+    <script>
+        const API_URL      = 'http://localhost:7777/predict';
+        const FEEDBACK_URL = 'http://localhost:7777/feedback';
+
+        // ── State ────────────────────────────────────────────────────────────
+        let currentText       = '';
+        let currentEntities   = [];   // [{text, label, start, end, score}]
+        let annotationMode    = false;
+        let pendingSelection  = null; // {text, start, end}
+
+        let jobsData          = [];
+        let currentJobIndex   = 0;
+
+        // Auto-resize textarea when its width changes (e.g. from panel resizing)
+        document.addEventListener('DOMContentLoaded', () => {
+            const ta = document.getElementById('inputText');
+            const resizeObserver = new ResizeObserver(() => {
+                ta.style.height = 'auto';
+                ta.style.height = ta.scrollHeight + 'px';
+            });
+            resizeObserver.observe(ta);
+            // Initial trigger
+            ta.dispatchEvent(new Event('input'));
+        });
+
+        // ── Data Loading & Pagination ─────────────────────────────────────────
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    jobsData = JSON.parse(e.target.result);
+                    if (jobsData && jobsData.length > 0) {
+                        currentJobIndex = 0;
+                        document.getElementById('jobPagination').style.display = 'flex';
+                        loadJobToInput(currentJobIndex);
+                        showToast(`✅ Loaded ${jobsData.length} jobs successfully.`);
+                    } else {
+                        showToast('JSON does not contain an array of jobs.', true);
+                    }
+                } catch (err) {
+                    showToast('Failed to parse JSON file.', true);
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Reset input to allow re-uploading same file
+        }
+
+        function loadJobToInput(index) {
+            if (index < 0 || index >= jobsData.length) return;
+            const job = jobsData[index];
+            document.getElementById('jobIndexInput').value = index + 1;
+            document.getElementById('jobCountTotal').textContent = `/ ${jobsData.length}`;
+
+            let text = "";
+            
+            // Major
+            const majors = job.basic_info?.majors || [];
+            if (majors.length > 0) {
+                text += "[MAJOR]:\n- " + majors.join(", ") + "\n\n";
+            }
+            
+            // Tag
+            const tags = job.basic_info?.tags || [];
+            if (tags.length > 0) {
+                text += "[TAG]:\n- " + tags.join(", ") + "\n\n";
+            }
+            
+            // Description
+            const desc = job.display_content?.raw_description || "";
+            if (desc) {
+                text += "[DESCRIPTION]:\n" + desc + "\n\n";
+            }
+            
+            // Requirement
+            const req = job.display_content?.raw_requirements || "";
+            if (req) {
+                text += "[REQUIREMENTS]:\n" + req + "\n\n";
+            }
+            
+            // Experience
+            const exp = job.display_content?.raw_experience_text || "";
+            if (exp) {
+                text += "[EXPERIENCE]:\n" + exp + "\n";
+            }
+
+            const ta = document.getElementById('inputText');
+            ta.value = text.trim();
+            ta.dispatchEvent(new Event('input'));
+        }
+
+        // ── Resizer Logic ───────────────────────────────────────────────────────
+        function initResizer(resizerId, leftPanelId, rightPanelId) {
+            const resizer = document.getElementById(resizerId);
+            const leftPanel = document.getElementById(leftPanelId);
+            const rightPanel = document.getElementById(rightPanelId);
+            
+            let isResizing = false;
+            let startX, leftStartWidth, rightStartWidth;
+
+            resizer.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                resizer.classList.add('resizing');
+                startX = e.clientX;
+                
+                leftStartWidth = leftPanel.getBoundingClientRect().width;
+                rightStartWidth = rightPanel.getBoundingClientRect().width;
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                
+                document.body.style.userSelect = 'none';
+            });
+
+            function onMouseMove(e) {
+                if (!isResizing) return;
+                const dx = e.clientX - startX;
+                
+                const newLeftWidth = leftStartWidth + dx;
+                const newRightWidth = rightStartWidth - dx;
+                
+                if (newLeftWidth > 200 && newRightWidth > 200) {
+                    const totalWidth = leftStartWidth + rightStartWidth;
+                    const leftPercent = (newLeftWidth / totalWidth) * 100;
+                    const rightPercent = (newRightWidth / totalWidth) * 100;
+                    
+                    leftPanel.style.flex = `${leftPercent} 1 0%`;
+                    rightPanel.style.flex = `${rightPercent} 1 0%`;
+                }
+            }
+
+            function onMouseUp() {
+                if (isResizing) {
+                    isResizing = false;
+                    resizer.classList.remove('resizing');
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    document.body.style.userSelect = '';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initResizer('resizer1', 'panel1', 'panel2');
+            initResizer('resizer2', 'panel2', 'panel3');
+        });
+
+        function prevJob() {
+            if (currentJobIndex > 0) {
+                currentJobIndex--;
+                loadJobToInput(currentJobIndex);
+            }
+        }
+
+        function nextJob() {
+            if (currentJobIndex < jobsData.length - 1) {
+                currentJobIndex++;
+                loadJobToInput(currentJobIndex);
+            }
+        }
+
+        function jumpToJob(val) {
+            let index = parseInt(val) - 1;
+            if (isNaN(index)) {
+                document.getElementById('jobIndexInput').value = currentJobIndex + 1;
+                return;
+            }
+            if (index < 0) index = 0;
+            if (index >= jobsData.length) index = jobsData.length - 1;
+            currentJobIndex = index;
+            loadJobToInput(currentJobIndex);
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────────────
+        function getLabelClass(label) {
+            const l = label.toLowerCase();
+            if (l.includes('skill'))      return 'skill';
+            if (l.includes('major'))      return 'major';
+            if (l.includes('experience') || l.includes('exp')) return 'experience';
+            return 'other';
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'show' + (isError ? ' error' : '');
+            setTimeout(() => t.className = '', 3000);
+        }
+
+        function updateStats() {
+            const counts = { skill: 0, major: 0, experience: 0 };
+            currentEntities.forEach(e => {
+                const lc = getLabelClass(e.label);
+                if (counts[lc] !== undefined) counts[lc]++;
+            });
+            document.getElementById('totalEntities').innerText = currentEntities.length;
+            document.getElementById('skillCount').innerText    = counts.skill;
+            document.getElementById('majorCount').innerText    = counts.major;
+            document.getElementById('expCount').innerText      = counts.experience;
+        }
+
+        // ── Render annotated text ─────────────────────────────────────────────
+        function renderAnnotatedView() {
+            currentEntities.sort((a, b) => a.start - b.start);
+            let html = '';
+            let cursor = 0;
+
+            currentEntities.forEach((ent, idx) => {
+                const labelClass = getLabelClass(ent.label);
+                // Text before entity
+                if (ent.start > cursor) {
+                    html += escapeHtml(currentText.substring(cursor, ent.start));
+                }
+                const extraClass = annotationMode ? 'annotate-mode' : '';
+                const isManualClass = ent.is_manual ? 'is-manual' : '';
+                const scoreTitle = `${ent.label} · ${(ent.score * 100).toFixed(1)}%`;
+                const deleteBtn  = annotationMode
+                    ? `<button class="delete-btn" onclick="deleteEntity(${idx}, event)" title="Remove entity">×</button>`
+                    : '';
+                html += `<span class="mark ${labelClass} ${extraClass} ${isManualClass}" data-idx="${idx}" title="${scoreTitle}">${escapeHtml(currentText.substring(ent.start, ent.end))}<span class="mark-label">${ent.label}</span>${deleteBtn}</span>`;
+                cursor = ent.end;
+            });
+
+            if (cursor < currentText.length) {
+                html += escapeHtml(currentText.substring(cursor));
+            }
+
+            const annotatedView = document.getElementById('annotatedView');
+            annotatedView.innerHTML = `<div class="annotated-text" id="annotatedTextDiv" style="user-select:${annotationMode ? 'text' : 'text'}">${html}</div>`;
+
+            if (annotationMode) {
+                document.getElementById('annotatedTextDiv').addEventListener('mouseup', onTextMouseUp);
+            }
+
+            updateStats();
+        }
+
+        // ── Render list view ──────────────────────────────────────────────────
+        function renderListView() {
+            const listView = document.getElementById('listView');
+            if (currentEntities.length === 0) {
+                listView.innerHTML = `<div class="empty-state">No entities. Add some in Annotation Mode.</div>`;
+                return;
+            }
+            const modeClass = annotationMode ? 'annotate-list-mode' : '';
+            listView.className = modeClass; // removed 'view-pane active' since it's its own column now
+
+            listView.innerHTML = currentEntities.map((ent, idx) => {
+                const labelClass = getLabelClass(ent.label);
+                const confidence = (ent.score * 100).toFixed(1);
+                const labelOptions = ['skill', 'major', 'experience'].map(l =>
+                    `<option value="${l}" ${l === ent.label.toLowerCase() ? 'selected' : ''}>${l.toUpperCase()}</option>`
+                ).join('');
+                return `
+                <div class="entity-card" style="border-left-color: var(--tag-${labelClass}-border); animation-delay: ${idx * 0.03}s" id="ecard-${idx}">
+                    <div class="entity-content">
+                        <div class="entity-text">${escapeHtml(ent.text)}</div>
+                        <div class="entity-meta">
+                            <span class="badge ${labelClass}">${ent.label}</span>
+                            <select class="label-select" onchange="changeLabel(${idx}, this.value)" title="Change label">${labelOptions}</select>
+                            <span class="confidence">
+                                <div class="confidence-bar"><div class="confidence-fill" style="width:${confidence}%"></div></div>
+                                ${confidence}%
+                            </span>
+                        </div>
+                    </div>
+                    <button class="remove-entity-btn" onclick="deleteEntity(${idx}, event)" title="Remove entity">✕ Remove</button>
+                </div>`;
+            }).join('');
+        }
+
+        function renderAll() {
+            renderAnnotatedView();
+            renderListView();
+        }
+
+        // ── Entity operations ─────────────────────────────────────────────────
+        function deleteEntity(idx, event) {
+            if (event) event.stopPropagation();
+            currentEntities.splice(idx, 1);
+            renderAll();
+            updateFeedbackBar();
+        }
+
+        function changeLabel(idx, newLabel) {
+            currentEntities[idx].label = newLabel.toUpperCase();
+            renderAll();
+            updateFeedbackBar();
+        }
+
+        // ── Annotation mode ───────────────────────────────────────────────────
+        function toggleAnnotationMode() {
+            annotationMode = !annotationMode;
+            const btn    = document.getElementById('annotateBtn');
+            const banner = document.getElementById('annotationBanner');
+            const fbBar  = document.getElementById('feedbackBar');
+            const fbBtn  = document.getElementById('submitFeedbackBtn');
+
+            if (annotationMode) {
+                btn.textContent    = '👁️ View Mode';
+                btn.className      = 'btn-warning';
+                banner.style.display  = 'block';
+                fbBar.style.display   = 'flex';
+                fbBtn.style.display   = 'flex';
+            } else {
+                btn.textContent    = '✏️ Annotate';
+                btn.className      = 'btn-warning';
+                banner.style.display  = 'none';
+                fbBar.style.display   = 'none';
+                fbBtn.style.display   = 'none';
+            }
+            hideLabelPicker();
+            renderAll();
+        }
+
+        function updateFeedbackBar() {
+            document.getElementById('feedbackChangeCount').textContent =
+                `${currentEntities.length} entities ready to submit`;
+        }
+
+        // ── Text selection → add entity ───────────────────────────────────────
+        function onTextMouseUp(e) {
+            hideLabelPicker();
+            const selection = window.getSelection();
+            if (!selection || selection.isCollapsed) return;
+
+            const selectedText = selection.toString().trim();
+            if (!selectedText || selectedText.length < 1) return;
+
+            // Find char offset of selected text in original text
+            const charStart = findSelectionInText(selectedText);
+            if (charStart === -1) {
+                showToast('Không tìm thấy vị trí trong text gốc.', true);
+                return;
+            }
+
+            pendingSelection = {
+                text:  selectedText,
+                start: charStart,
+                end:   charStart + selectedText.length,
+            };
+
+            // Show picker near mouse
+            showLabelPicker(e.clientX, e.clientY, selectedText);
+            selection.removeAllRanges();
+        }
+
+        function findSelectionInText(selectedText) {
+            // Find first occurrence not already covered by an existing entity
+            let pos = 0;
+            while (true) {
+                const idx = currentText.indexOf(selectedText, pos);
+                if (idx === -1) return -1;
+
+                const end = idx + selectedText.length;
+                const overlaps = currentEntities.some(e =>
+                    !(e.end <= idx || e.start >= end)
+                );
+
+                if (!overlaps) return idx;
+                pos = idx + 1;
+            }
+        }
+
+        function showLabelPicker(x, y, selectedText) {
+            const picker = document.getElementById('labelPicker');
+            document.getElementById('pickerSelectedText').textContent =
+                selectedText.length > 50 ? selectedText.substring(0, 50) + '...' : selectedText;
+            picker.style.display = 'block';
+
+            // Position picker near cursor, ensure on screen
+            const pw = 220, ph = 180;
+            const vw = window.innerWidth, vh = window.innerHeight;
+            picker.style.left = Math.min(x + 10, vw - pw - 20) + 'px';
+            picker.style.top  = Math.min(y + 10, vh - ph - 20) + 'px';
+        }
+
+        function hideLabelPicker() {
+            document.getElementById('labelPicker').style.display = 'none';
+            pendingSelection = null;
+        }
+
+        function addEntityFromSelection(label) {
+            if (!pendingSelection) return;
+            currentEntities.push({
+                text:  pendingSelection.text,
+                label: label.toUpperCase(),
+                start: pendingSelection.start,
+                end:   pendingSelection.end,
+                score: 1.0,  // manually added → score 1.0
+                is_manual: true,
+            });
+            hideLabelPicker();
+            renderAll();
+            updateFeedbackBar();
+            showToast(`✅ Added "${pendingSelection.text}" as ${label.toUpperCase()}`);
+        }
+
+        // Close picker on outside click
+        document.addEventListener('mousedown', (e) => {
+            const picker = document.getElementById('labelPicker');
+            if (picker.style.display !== 'none' && !picker.contains(e.target)) {
+                hideLabelPicker();
+            }
+        });
+
+        // ── Extract entities ──────────────────────────────────────────────────
+        async function extractEntities() {
+            currentText = document.getElementById('inputText').value;
+            const labelsStr  = document.getElementById('labelsInput').value;
+            const threshold  = parseFloat(document.getElementById('thresholdInput').value) || 0.3;
+            const labels = labelsStr.split(',').map(l => l.trim()).filter(l => l.length > 0);
+
+            if (!currentText.trim()) return;
+
+            // Reset annotation mode
+            annotationMode = false;
+            const banner = document.getElementById('annotationBanner');
+            banner.style.display = 'none';
+
+            const btn    = document.getElementById('extractBtn');
+            const loader = document.getElementById('btnLoader');
+            const icon   = document.getElementById('btnIcon');
+            btn.disabled = true;
+            loader.style.display = 'block';
+            icon.style.display   = 'none';
+            btn.querySelector('span').innerText = 'Processing...';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: currentText, labels, threshold }),
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                currentEntities = (data.entities || []).sort((a, b) => a.start - b.start);
+
+                document.getElementById('emptyState').style.display = 'none';
+                document.getElementById('statsRow').style.display   = 'flex';
+                document.getElementById('annotateBtn').style.display = 'flex';
+                document.getElementById('submitFeedbackBtn').style.display = 'none';
+                document.getElementById('feedbackBar').style.display = 'none';
+
+                renderAll();
+
+            } catch (error) {
+                console.error(error);
+                showToast('Failed to connect to API at port 7777.', true);
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+                icon.style.display   = 'block';
+                btn.querySelector('span').innerText = 'Extract Entities';
+            }
+        }
+
+        // ── Submit feedback ───────────────────────────────────────────────────
+        async function submitFeedback() {
+            if (!currentText) { showToast('No text to submit.', true); return; }
+
+            const btn = document.getElementById('submitFeedbackBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Saving...';
+
+            const payload = {
+                text: currentText,
+                entities: currentEntities.map(e => ({
+                    text:  e.text,
+                    label: e.label.toUpperCase(),
+                    start: e.start,
+                    end:   e.end,
+                })),
+                note: `Reviewed via test_api.html — ${new Date().toISOString()}`,
+            };
+
+            if (jobsData && jobsData.length > 0) {
+                payload.job_id = jobsData[currentJobIndex]?.internal_job_id;
+            }
+
+            try {
+                const res = await fetch(FEEDBACK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                showToast(`✅ Saved ${data.entities_saved} entities to feedback.jsonl`);
+                document.getElementById('feedbackChangeCount').textContent =
+                    `✅ Submitted! ${data.entities_saved} entities saved.`;
+
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to submit feedback.', true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💾 Submit Corrections';
+            }
+        }
+    </script>
+</body>
+
+</html>

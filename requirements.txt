@@ -1,0 +1,15 @@
+# ── Dataset builder (build_dataset_v2.py) ─────────────────────────────────────
+openai>=1.30.0          # AsyncOpenAI client
+httpx>=0.27.0           # HTTP client (used by openai; SSL bypass)
+python-dotenv>=1.0.0    # load_dotenv
+tqdm>=4.66.0            # tqdm.asyncio progress bar
+
+# ── GLiNER fine-tuning (train_gliner_colab.ipynb / finetune_gliner_kaggle.ipynb) ──
+gliner>=0.2.0           # GLiNER model & trainer
+torch>=2.1.0            # PyTorch backend
+transformers>=4.40.0    # HuggingFace transformers (tokenizer, backbone)
+datasets>=2.19.0        # HuggingFace datasets (load_dataset)
+accelerate>=0.30.0      # HuggingFace Accelerate (Trainer backend)
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+numpy>=1.26.0

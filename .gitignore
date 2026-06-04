@@ -1,0 +1,13 @@
+.env
+build_dataset_v2.py
+/data/train_dataset.json
+/data/paper_data
+/data/for_train.json
+/data/for_test.json
+/src/build_dataset_v3_groq.py
+/src/run_parallel.py
+/src/build_dataset_v3.py
+/models
+/data/train_dataset_v2_groq_progress.jsonl
+/src/train_gliner_colab.ipynb
+/src/.env.example
