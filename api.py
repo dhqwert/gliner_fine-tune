@@ -19,10 +19,13 @@ import json
 from datetime import datetime
 import re
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "checkpoint-1400")
+MODEL_PATH = os.getenv("GLINER_MODEL_PATH", os.path.join(os.path.dirname(__file__), "models", "checkpoint-1400"))
 
 # Số words (text.split()) tối đa mỗi chunk.
 # Training dùng 384 tokenize_text() tokens (gồm cả dấu câu tách riêng),
@@ -48,6 +51,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------------------------------------------------------------------
+# S3 Model Auto-Downloader
+# ---------------------------------------------------------------------------
+# If MinIO is configured in ENV, download the model first
+MINIO_BUCKET = os.getenv("MINIO_BUCKET")
+GLINER_MINIO_PREFIX = os.getenv("GLINER_MINIO_PREFIX", "")
+
+if MINIO_BUCKET:
+    from s3_downloader import download_model_from_minio
+    # Local path where we cache the downloaded model from MinIO
+    local_dir_name = GLINER_MINIO_PREFIX.replace('/', '_') if GLINER_MINIO_PREFIX else MINIO_BUCKET
+    local_cache_path = os.path.join(os.path.dirname(__file__), "models", local_dir_name)
+    success = download_model_from_minio(MINIO_BUCKET, GLINER_MINIO_PREFIX, local_cache_path)
+    if success:
+        MODEL_PATH = local_cache_path
 
 try:
     print(f"Loading model from {MODEL_PATH}...")

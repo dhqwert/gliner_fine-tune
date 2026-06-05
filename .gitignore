@@ -11,4 +11,8 @@ build_dataset_v2.py
 /data/train_dataset_v2_groq_progress.jsonl
 /src/train_gliner_colab.ipynb
 /src/.env.example
-/__pycache__
+__pycache__
+__pycache__/
+**/__pycache__/
+*.pyc
+.venv
